@@ -20,6 +20,7 @@ const ROUTE_PATHS: Record<AppRoute, string> = {
 function routeFromPath(pathname: string): Route {
   const path = pathname.replace(/\/+$/, '') || '/';
   if (path === '/pay') return 'phonepay';
+  if (path === '/kiosk' || path.startsWith('/kiosk/')) return 'kiosk';
   if (path === '/kitchen' || path === '/pickup' || path === '/admin') return path.slice(1) as AppRoute;
   return 'kiosk';
 }

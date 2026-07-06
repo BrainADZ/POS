@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft, Armchair, Banknote, Beef, Bell, Cake, CheckCircle2, ChevronDown, ChevronRight, Clock,
-  Coffee, CreditCard, EggFried, LayoutGrid, Leaf, List, Package, Pizza, Printer, QrCode,
+  Coffee, CreditCard, EggFried, LayoutGrid, Leaf, List, Menu, Package, Pizza, Printer, QrCode,
   RefreshCw, Salad, Search, ShoppingCart, SlidersHorizontal, Star, TicketCheck, User, UtensilsCrossed,
   Wallet, Wifi, X, XCircle,
 } from 'lucide-react';
@@ -15,9 +15,32 @@ import { FoodImage, MockQR, QRCanvas, ScranLogo, VegDot } from '../components/Sh
 import { computeTotals, effectivePrice, formatHM, formatToken, getActiveSlot, inr, isPromoActive, lineTotal, maxWaitMins, SLOT_LABELS, uid } from '../utils';
 import { t } from '../i18n';
 import { navigate } from '../App';
+import { printOrderReceipt } from '../receiptPrinter';
 
 type Step = 'welcome' | 'order' | 'payment' | 'confirm';
 type CategoryFilter = 'All' | Category;
+
+const KIOSK_STEP_PATHS: Record<Step, string> = {
+  welcome: '/kiosk',
+  order: '/kiosk/order',
+  payment: '/kiosk/payment',
+  confirm: '/kiosk/confirm',
+};
+
+function getKioskStep(): Step {
+  const path = window.location.pathname.replace(/\/+$/, '') || '/';
+  if (path === '/kiosk/order') return 'order';
+  if (path === '/kiosk/payment') return 'payment';
+  if (path === '/kiosk/confirm') return 'confirm';
+  return 'welcome';
+}
+
+function syncKioskPath(step: Step) {
+  const path = KIOSK_STEP_PATHS[step];
+  if (window.location.pathname === path) return;
+  window.history.pushState(null, '', path);
+  window.dispatchEvent(new Event('popstate'));
+}
 
 const CATEGORY_ICONS: Record<CategoryFilter, React.ReactNode> = {
   All: <LayoutGrid size={19} />,
@@ -39,40 +62,55 @@ const PAYMENT_METHODS = [
 ];
 
 export default function KioskView() {
-  const [step, setStep] = useState<Step>('welcome');
+  const [step, setStep] = useState<Step>(getKioskStep);
   const [placedOrder, setPlacedOrder] = useState<Order | null>(null);
   const [initialMethod, setInitialMethod] = useState('upi');
+  const latestOrder = usePosStore((s) => s.orders[0] ?? null);
+
+  useEffect(() => {
+    const onRouteChange = () => setStep(getKioskStep());
+    window.addEventListener('popstate', onRouteChange);
+    return () => window.removeEventListener('popstate', onRouteChange);
+  }, []);
+
+  const goStep = (next: Step) => {
+    setStep(next);
+    syncKioskPath(next);
+  };
+
+  const confirmedOrder = placedOrder ?? latestOrder;
 
   return (
     <div className="h-full overflow-hidden">
-      {step === 'welcome' && <WelcomeScreen onStart={() => setStep('order')} />}
+      {step === 'welcome' && <WelcomeScreen onStart={() => goStep('order')} />}
       {step === 'order' && (
         <OrderScreen
           onProceed={(method) => {
             setInitialMethod(method === 'card' ? 'card' : 'upi');
-            setStep('payment');
+            goStep('payment');
           }}
         />
       )}
       {step === 'payment' && (
         <PaymentScreen
           initialMethod={initialMethod}
-          onBack={() => setStep('order')}
+          onBack={() => goStep('order')}
           onPaid={(order) => {
             setPlacedOrder(order);
-            setStep('confirm');
+            goStep('confirm');
           }}
         />
       )}
-      {step === 'confirm' && placedOrder && (
+      {step === 'confirm' && confirmedOrder && (
         <ConfirmScreen
-          order={placedOrder}
+          order={confirmedOrder}
           onNewOrder={() => {
             setPlacedOrder(null);
-            setStep('order');
+            goStep('order');
           }}
         />
       )}
+      {step === 'confirm' && !confirmedOrder && <OrderScreen onProceed={() => goStep('payment')} />}
     </div>
   );
 }
@@ -243,6 +281,7 @@ function OrderScreen({ onProceed }: { onProceed: (method?: 'card') => void }) {
   const [view, setView] = useState<'grid' | 'list'>(display.defaultView);
   const [customizing, setCustomizing] = useState<MenuItem | null>(null);
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
+  const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
 
   // re-evaluate the active meal slot every 30s so the menu flips automatically
   const [now, setNow] = useState(() => new Date());
@@ -296,6 +335,7 @@ function OrderScreen({ onProceed }: { onProceed: (method?: 'card') => void }) {
 
   const itemCount = cart.reduce((n, l) => n + l.qty, 0);
   const totals = computeTotals(cart, couponCode, gstRate);
+  const groupNames = ['All', ...groupList] as string[];
 
   // icon for a sidebar group (category emoji/image, or a generic mark for cuisines)
   const groupIcon = (name: string) => {
@@ -361,6 +401,13 @@ function OrderScreen({ onProceed }: { onProceed: (method?: 'card') => void }) {
         <div className="shrink-0 space-y-3 border-b border-sand bg-white p-4 pb-3">
           {/* top bar */}
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCategoryMenuOpen(true)}
+              aria-label="Open category menu"
+              className="flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-lg border border-sand text-slate-600 active:bg-ivory lg:hidden"
+            >
+              <Menu size={20} />
+            </button>
             <div className="relative min-w-0 flex-1">
               <Search size={19} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
@@ -412,7 +459,7 @@ function OrderScreen({ onProceed }: { onProceed: (method?: 'card') => void }) {
             </span>
             {/* group strip for small screens */}
             <div className="flex w-full gap-1.5 overflow-x-auto pb-1 lg:hidden">
-              {(['All', ...groupList] as string[]).map((c) => (
+              {groupNames.map((c) => (
                 <button
                   key={c}
                   onClick={() => setGroup(c)}
@@ -562,6 +609,52 @@ function OrderScreen({ onProceed }: { onProceed: (method?: 'card') => void }) {
       <aside className="hidden h-full min-h-0 overflow-hidden border-l border-sand lg:block">
         <CartPanel onProceed={onProceed} />
       </aside>
+
+      {categoryMenuOpen && (
+        <div className="fixed inset-0 z-50 bg-navy/45 lg:hidden" onClick={() => setCategoryMenuOpen(false)}>
+          <div className="flex h-full w-[82vw] max-w-xs flex-col bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex shrink-0 items-center justify-between border-b border-sand px-4 py-3">
+              <div>
+                <ScranLogo size="sm" />
+                <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  {layoutMode === 'cuisine' ? 'By Cuisine' : 'Categories'}
+                </p>
+              </div>
+              <button
+                onClick={() => setCategoryMenuOpen(false)}
+                aria-label="Close category menu"
+                className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 active:bg-ivory"
+              >
+                <X size={21} />
+              </button>
+            </div>
+            <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3">
+              {groupNames.map((c) => {
+                const active = group === c;
+                const count = c === 'All' ? slotMenu.length : slotMenu.filter((m) => m[groupField] === c).length;
+                return (
+                  <button
+                    key={c}
+                    onClick={() => {
+                      setGroup(c);
+                      setCategoryMenuOpen(false);
+                    }}
+                    className={`flex min-h-[54px] w-full items-center gap-3 rounded-lg px-3.5 text-left text-[15px] font-semibold transition-colors ${
+                      active ? 'bg-brand-100 text-navy' : 'text-slate-500 active:bg-ivory'
+                    }`}
+                  >
+                    <span className={active ? 'text-brand-700' : 'text-slate-400'}>{c === 'All' ? <LayoutGrid size={19} /> : groupIcon(c)}</span>
+                    <span className="min-w-0 flex-1 truncate">{c}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${active ? 'bg-white/70 text-brand-800' : 'bg-ivory text-slate-400'}`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+        </div>
+      )}
 
       {/* mobile cart drawer */}
       {mobileCartOpen && (
@@ -1034,6 +1127,7 @@ function PaymentScreen({ initialMethod, onBack, onPaid }: { initialMethod: strin
 
 function ConfirmScreen({ order, onNewOrder }: { order: Order; onNewOrder: () => void }) {
   const lang = usePosStore((s) => s.lang);
+  const gstRate = usePosStore((s) => s.gstRate);
   const showToast = usePosStore((s) => s.showToast);
 
   return (
@@ -1064,7 +1158,13 @@ function ConfirmScreen({ order, onNewOrder }: { order: Order; onNewOrder: () => 
         <p className="mt-2 text-sm text-slate-400">Paid {inr(order.total)} · Watch the pickup screen for your token</p>
 
         <div className="mt-7 grid gap-2.5 sm:grid-cols-3">
-          <button onClick={() => showToast('Receipt sent to thermal printer (demo)')} className="btn-outline min-h-[52px]">
+          <button
+            onClick={() => {
+              const ok = printOrderReceipt(order, gstRate);
+              showToast(ok ? 'Receipt sent to printer' : 'Printer unavailable in this browser');
+            }}
+            className="btn-outline min-h-[52px]"
+          >
             <Printer size={18} /> {t('printReceipt', lang)}
           </button>
           <button onClick={() => navigate('pickup')} className="btn-outline min-h-[52px]">

@@ -8,11 +8,14 @@ import { computeTotals, discountLabel, inr, lineTotal } from '../utils';
 import { EmptyState, FoodImage, VegDot } from './Shared';
 import DiscountModal from './DiscountModal';
 import { t } from '../i18n';
+import { printCartBill } from '../receiptPrinter';
 
 export default function CartPanel({ onProceed }: { onProceed: (method?: 'card') => void }) {
   const lang = usePosStore((s) => s.lang);
   const cart = usePosStore((s) => s.cart);
   const orderType = usePosStore((s) => s.orderType);
+  const tableNumber = usePosStore((s) => s.tableNumber);
+  const customerName = usePosStore((s) => s.customerName);
   const couponCode = usePosStore((s) => s.couponCode);
   const gstRate = usePosStore((s) => s.gstRate);
   const { setOrderType, updateLineQty, removeLine, clearCart, setCoupon, showToast } = usePosStore.getState();
@@ -24,7 +27,18 @@ export default function CartPanel({ onProceed }: { onProceed: (method?: 'card') 
 
   const actions = [
     { label: 'Discount', icon: <BadgePercent size={17} />, run: () => setDiscountOpen(true) },
-    { label: 'Print Bill', icon: <Printer size={17} />, run: () => showToast('Bill sent to printer (demo)') },
+    {
+      label: 'Print Bill',
+      icon: <Printer size={17} />,
+      run: () => {
+        if (empty) {
+          showToast('Add items before printing the bill');
+          return;
+        }
+        const ok = printCartBill({ lines: cart, orderType, couponCode, gstRate, tableNumber, customerName });
+        showToast(ok ? 'Bill sent to printer' : 'Printer unavailable in this browser');
+      },
+    },
     { label: 'Split Bill', icon: <SplitSquareHorizontal size={17} />, run: () => showToast('Split bill — available in full POS') },
     { label: 'More', icon: <MoreHorizontal size={17} />, run: () => showToast('More order actions (demo)') },
   ];
