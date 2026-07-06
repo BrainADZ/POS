@@ -347,6 +347,30 @@ function OrderScreen({ onProceed }: { onProceed: (method?: 'card') => void }) {
     return <UtensilsCrossed size={19} />;
   };
 
+  const groupCount = (name: string) => (name === 'All' ? slotMenu.length : slotMenu.filter((m) => m[groupField] === name).length);
+
+  const renderGroupButton = (name: string, closeAfterSelect = false) => {
+    const active = group === name;
+    return (
+      <button
+        key={name}
+        onClick={() => {
+          setGroup(name);
+          if (closeAfterSelect) setCategoryMenuOpen(false);
+        }}
+        className={`flex min-h-[54px] w-full items-center gap-3 rounded-lg px-3.5 text-left text-[15px] font-semibold transition-colors ${
+          active ? 'bg-brand-100 text-navy' : 'text-slate-500 active:bg-ivory'
+        }`}
+      >
+        <span className={active ? 'text-brand-700' : 'text-slate-400'}>{name === 'All' ? <LayoutGrid size={19} /> : groupIcon(name)}</span>
+        <span className="min-w-0 flex-1 truncate">{name}</span>
+        <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${active ? 'bg-white/70 text-brand-800' : 'bg-ivory text-slate-400'}`}>
+          {groupCount(name)}
+        </span>
+      </button>
+    );
+  };
+
   const chips = [
     { label: t('vegOnly', lang), icon: <Leaf size={14} />, on: vegOnly, toggle: () => setVegOnly((v) => !v), show: true },
     { label: t('bestseller', lang), icon: <Star size={14} />, on: bestsellerOnly, toggle: () => setBestsellerOnly((v) => !v), show: display.showBestsellers },
@@ -365,25 +389,7 @@ function OrderScreen({ onProceed }: { onProceed: (method?: 'card') => void }) {
           </p>
         </div>
         <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3">
-          {(['All', ...groupList] as string[]).map((c) => {
-            const active = group === c;
-            const count = c === 'All' ? slotMenu.length : slotMenu.filter((m) => m[groupField] === c).length;
-            return (
-              <button
-                key={c}
-                onClick={() => setGroup(c)}
-                className={`flex min-h-[52px] items-center gap-3 rounded-lg px-3.5 text-left text-[15px] font-semibold transition-colors ${
-                  active ? 'bg-brand-100 text-navy' : 'text-slate-500 active:bg-ivory'
-                }`}
-              >
-                <span className={active ? 'text-brand-700' : 'text-slate-400'}>{c === 'All' ? <LayoutGrid size={19} /> : groupIcon(c)}</span>
-                <span className="flex-1 truncate">{c}</span>
-                <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${active ? 'bg-white/70 text-brand-800' : 'bg-ivory text-slate-400'}`}>
-                  {count}
-                </span>
-              </button>
-            );
-          })}
+          {groupNames.map((c) => renderGroupButton(c))}
         </nav>
         <div className="border-t border-sand p-3">
           <div className="flex items-center gap-2.5 rounded-lg px-2 py-2">
@@ -629,28 +635,7 @@ function OrderScreen({ onProceed }: { onProceed: (method?: 'card') => void }) {
               </button>
             </div>
             <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3">
-              {groupNames.map((c) => {
-                const active = group === c;
-                const count = c === 'All' ? slotMenu.length : slotMenu.filter((m) => m[groupField] === c).length;
-                return (
-                  <button
-                    key={c}
-                    onClick={() => {
-                      setGroup(c);
-                      setCategoryMenuOpen(false);
-                    }}
-                    className={`flex min-h-[54px] w-full items-center gap-3 rounded-lg px-3.5 text-left text-[15px] font-semibold transition-colors ${
-                      active ? 'bg-brand-100 text-navy' : 'text-slate-500 active:bg-ivory'
-                    }`}
-                  >
-                    <span className={active ? 'text-brand-700' : 'text-slate-400'}>{c === 'All' ? <LayoutGrid size={19} /> : groupIcon(c)}</span>
-                    <span className="min-w-0 flex-1 truncate">{c}</span>
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${active ? 'bg-white/70 text-brand-800' : 'bg-ivory text-slate-400'}`}>
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
+              {groupNames.map((c) => renderGroupButton(c, true))}
             </nav>
           </div>
         </div>
