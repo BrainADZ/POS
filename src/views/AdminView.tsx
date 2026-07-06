@@ -534,7 +534,7 @@ function DevicesTab() {
   );
 }
 
-/* ---------------------------------- Settings: meal slots, menu mode, tax ---------------------------------- */
+/* ---------------------------------- Settings: meal slots, tax ---------------------------------- */
 
 function SettingsTab() {
   const slotConfig = usePosStore((s) => s.slotConfig);
@@ -544,7 +544,7 @@ function SettingsTab() {
   const { updateSlotWindow, setSupperEnabled, setSlotOverride, setGstRate, showToast } = usePosStore.getState();
   const [gstInput, setGstInput] = useState(String(Math.round(gstRate * 1000) / 10));
 
-  const activeSlot = getActiveSlot(slotConfig, supperEnabled, slotOverride);
+  const activeSlot = getActiveSlot(slotConfig, supperEnabled, 'auto');
 
   return (
     <div>
@@ -594,7 +594,7 @@ function SettingsTab() {
 
         <div className="space-y-4">
           {/* kiosk menu mode */}
-          <div className="card p-5">
+          <div className="hidden">
             <h2 className="flex items-center gap-2 text-base font-extrabold text-slate-800">
               <Store size={18} className="text-brand-600" /> Kiosk Menu Mode
             </h2>

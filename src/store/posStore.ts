@@ -343,9 +343,9 @@ export const usePosStore = create<PosState>()(
     }),
     {
       name: 'scran-pos',
-      version: 5,
+      version: 6,
       // reset the catalogue-shaped state when the model changes
-      // (v4: meal slots + prep; v5: categories, cuisines, promotions, variants, food type)
+      // (v4: meal slots + prep; v5: categories, cuisines, promotions, variants, food type; v6: kiosk follows the clock)
       migrate: (persisted: unknown, version: number) => {
         const state = persisted as Partial<PosState>;
         if (version < 5) {
@@ -361,6 +361,12 @@ export const usePosStore = create<PosState>()(
             supperEnabled: false,
             slotOverride: 'auto' as const,
             gstRate: GST_RATE,
+          };
+        }
+        if (version < 6) {
+          return {
+            ...state,
+            slotOverride: 'auto' as const,
           };
         }
         return state;
