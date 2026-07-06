@@ -44,7 +44,7 @@ export default function KioskView() {
   const [initialMethod, setInitialMethod] = useState('upi');
 
   return (
-    <div className="h-full">
+    <div className="h-full overflow-hidden">
       {step === 'welcome' && <WelcomeScreen onStart={() => setStep('order')} />}
       {step === 'order' && (
         <OrderScreen
@@ -64,7 +64,15 @@ export default function KioskView() {
           }}
         />
       )}
-      {step === 'confirm' && placedOrder && <ConfirmScreen order={placedOrder} onNewOrder={() => setStep('welcome')} />}
+      {step === 'confirm' && placedOrder && (
+        <ConfirmScreen
+          order={placedOrder}
+          onNewOrder={() => {
+            setPlacedOrder(null);
+            setStep('order');
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -307,9 +315,9 @@ function OrderScreen({ onProceed }: { onProceed: (method?: 'card') => void }) {
   ].filter((c) => c.show);
 
   return (
-    <div className="grid h-full grid-cols-1 lg:grid-cols-[232px_minmax(0,1fr)_370px] xl:grid-cols-[248px_minmax(0,1fr)_392px]">
+    <div className="grid h-full min-h-0 overflow-hidden grid-cols-1 lg:grid-cols-[232px_minmax(0,1fr)_370px] xl:grid-cols-[248px_minmax(0,1fr)_392px]">
       {/* left: logo + categories/cuisines */}
-      <aside className="hidden h-full flex-col border-r border-sand bg-white lg:flex">
+      <aside className="hidden h-full min-h-0 flex-col overflow-hidden border-r border-sand bg-white lg:flex">
         <div className="px-5 pb-3 pt-5">
           <ScranLogo size="md" />
           <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
@@ -349,7 +357,7 @@ function OrderScreen({ onProceed }: { onProceed: (method?: 'card') => void }) {
       </aside>
 
       {/* centre: top bar + grid */}
-      <section className="flex h-full min-w-0 flex-col">
+      <section className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
         <div className="shrink-0 space-y-3 border-b border-sand bg-white p-4 pb-3">
           {/* top bar */}
           <div className="flex items-center gap-2">
@@ -551,7 +559,7 @@ function OrderScreen({ onProceed }: { onProceed: (method?: 'card') => void }) {
       </section>
 
       {/* right: cart */}
-      <aside className="hidden h-full min-h-0 border-l border-sand lg:block">
+      <aside className="hidden h-full min-h-0 overflow-hidden border-l border-sand lg:block">
         <CartPanel onProceed={onProceed} />
       </aside>
 

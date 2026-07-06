@@ -107,7 +107,7 @@ export default function App() {
         </nav>
       </header>
 
-      <main className="min-h-0 flex-1">
+      <main className="min-h-0 flex-1 overflow-hidden">
         {route === 'kiosk' && <KioskView />}
         {route === 'kitchen' && <KitchenView />}
         {route === 'pickup' && <PickupView />}
